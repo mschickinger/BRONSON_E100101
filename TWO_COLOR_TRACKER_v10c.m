@@ -507,4 +507,54 @@ for m = 1:N_movie
     for j = 1:size(pos_in_frame{m,1},1)
         pos_in_frame{m,1}{j} = zeros(size(merged_itraces{m,1},1),2);
         for s=1:size(pos_in_frame{m,1}{j},1)
-        pos_in_frame{m,1}{j}(s,1:2) = (merged_itraces{m,4}{s,1}(j)>=fit_cutoff{m                
+        pos_in_frame{m,1}{j}(s,1:2) = (merged_itraces{m,4}{s,1}(j)>=fit_cutoff{m                                                                                                                                                                                                                   vwcm_result{m}{i,ch}(j,1:3) = merged_itraces{m,ch}{i}(j,1:3)*...
+        (merged_itraces{m,ch}{i}(j,4)>fit_cutoff{m,ch}(i));
+    end
+    vwcm_result{m}{i,ch} = [vwcm_result{m}{i,ch} zeros(size(vwcm_result{m}{i,ch},1),10)];
+    end
+    end
+end
+
+%%
+mycluster=parcluster('SharedCluster');
+vwcm_job = batch(mycluster, @par_vwcm_v1, 1, { ch1, ch2, pos_in_frame, path_out} ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
+    ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
+  
+%% retrieve parallel computation data and transfer to vwcm_result cell
+
+vwcm_output = load('vwcm_data');
+vwcm_output = vwcm_output.output;
+
+for m=1:N_movie
+    for ch = 1:2
+    for i = 1:size(vwcm_result{m},1)
+        vwcm_result{m}{i,ch}(:,6:13) = vwcm_output{m}{i,ch}(:,:);
+    end
+    end
+end     
+        
+%% Mapping - map fitted/estimated coordinates on other channel; save all data
+if mapping
+    for m = 1:N_movie
+    for i = 1:size(vwcm_result{m},1)
+    for j = 1:size(vwcm_result{m}{i,1},1)
+    vwcm_result{m}{i,1}(j,4:5) = transformPointsInverse(tform_2TO1, vwcm_result{m}{i,1}(j,6:7));  %%this takes coords in ch1 and transforms them to coords in ch2
+    fit_result{m}{i,1}(j,4:5) = transformPointsInverse(tform_2TO1, fit_result{m}{i,1}(j,6:7));
+    end
+    for j = 1:size(vwcm_result{m}{i,2},1)
+    vwcm_result{m}{i,2}(j,4:5) = transformPointsInverse(tform_1TO2, vwcm_result{m}{i,2}(j,6:7));  %%this takes coords in ch2 and transforms them to coords in ch1
+    fit_result{m}{i,2}(j,4:5) = transformPointsInverse(tform_1TO2, fit_result{m}{i,2}(j,6:7));
+    end
+    end
+    end
+end
+
+% save data
+save([path_out filesep 'all_data.mat']);
+
+%  Plotting data will be performed elsewhere. 
+
+disp('Done')
+% End of program
+
