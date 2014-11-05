@@ -396,7 +396,7 @@ avg_iEndval = zeros(N_movie,2);
 avg_iEndval_tenth = zeros(N_movie,2);
 for i=1:N_movie 
     %get fluorescence intensity traces from position    
-    ch1_itraces_full = ch1{i}.int_spots_in_frames(ch1{i}.frames, peaks(peaks(:,5)==i,1:2), r_integrate);
+    ch1_itraces_full = ch1{i}.int_spots_in_frames(1:length(ch1{i}.frames), peaks(peaks(:,5)==i,1:2), r_integrate);
     display(['Tracing ' channel{1} ' channel in movie #' num2str(i) ' done'])
     toc %
     ch2_itraces_full = ch2{i}.int_spots_in_frames(ch2{i}.frames, peaks(peaks(:,5)==i,3:4), r_integrate);
@@ -571,11 +571,9 @@ if mapping
 end
 
 %% save data
-save([path_out filesep 'data_all.mat']);
+save([path_out filesep 'all_data.mat']);
 
 %  Plotting data will be performed elsewhere. 
-%  WATCH OUT - name change from "fit_result" to "vwcm_result".
 
 % End of program
-disp('Done')
-          
+
