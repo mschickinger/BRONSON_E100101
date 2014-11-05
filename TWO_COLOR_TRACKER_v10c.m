@@ -576,6 +576,4 @@ save([path_out filesep 'data_all.mat']);
 %  Plotting data will be performed elsewhere. 
 %  WATCH OUT - name change from "fit_result" to "vwcm_result".
 
-% End of program
-disp('Done')
-          
+% End of pro
