@@ -434,7 +434,9 @@ for m = 1:N_movie
         
         tmp = inputdlg(['Cutoff intensity for movie #' num2str(m) ', ' channel{ch} ' channel, spot #' ...
             num2str(act_spotnum)], 'Cutoff intensity', 1, {num2str(def_fc)});
-
+        if isempty(tmp)
+            break
+        end
         fit_cutoff{m,ch}(act_spotnum) = str2double(tmp);
         def_fc = (str2double(tmp)>0)*str2double(tmp);
     end
@@ -493,7 +495,7 @@ end
 
 %% start fitting batch job
 mycluster=parcluster('SharedCluster');
-vwcm_job = batch(mycluster, @par_fit_v1, 1, {ch1, ch2, pos_in_frame, all_fit_result1, all_fit_result2, channel, path_out} ...
+fit_job = batch(mycluster, @par_fit_v1, 1, {ch1, ch2, pos_in_frame, all_fit_result1, all_fit_result2, channel, path_out} ...
     ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
   
@@ -549,6 +551,7 @@ end
         
 %% Mapping - map fitted/estimated coordinates on other channel; save all data
 if mapping
+    tic
     for m = 1:N_movie
     for i = 1:size(vwcm_result{m},1)
     for j = 1:size(vwcm_result{m}{i,1},1)
@@ -561,6 +564,7 @@ if mapping
     end
     end
     end
+    toc
 end
 
 % save data
@@ -571,4 +575,3 @@ save([path_out filesep 'all_data.mat']);
 disp('Done')
 % End of program
 
-                                                                     
