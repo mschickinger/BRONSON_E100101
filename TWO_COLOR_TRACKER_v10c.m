@@ -496,13 +496,12 @@ end
 %% start fitting batch job
 mycluster=parcluster('SharedCluster');
 fit_job = batch(mycluster, @par_fit_v1, 1, {ch1, ch2, pos_in_frame, all_fit_result1, all_fit_result2, channel, path_out} ...
-    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 47 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
   
 %% retrieve parallel computation data and transfer to fit_result cell
-
-par_fit_result = load('par_fit_result');
-par_fit_result = par_fit_result.par_fit_result;
+cd(path_out)
+load('par_fit_result');
 
 for m=1:N_movie
     for ch = 1:2
@@ -533,13 +532,12 @@ end
 %%
 mycluster=parcluster('SharedCluster');
 vwcm_job = batch(mycluster, @par_vwcm_v1, 1, { ch1, ch2, pos_in_frame, path_out} ...
-    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 15 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
   
 %% retrieve parallel computation data and transfer to vwcm_result cell
-
-vwcm_output = load('vwcm_data');
-vwcm_output = vwcm_output.output;
+cd(path_out)
+load('vwcm_data');
 
 for m=1:N_movie
     for ch = 1:2

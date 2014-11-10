@@ -150,65 +150,10 @@ display(['You have ' num2str(N_peaks_raw) ' pairs'])
 %% drift correction
 if drift_cor
     
-% find spot pairs
-pairs_for_drift_cor = cell(N_movie,2);
+display('Perform drift correction now or hit any key to proceed')
+pause
 
-for i=1:N_movie
-    
-    [h_min_end, pos_ch1_end] = ch1{i}.get_threshold(r_find, avg_img{i,3});
-    [h_min_end, pos_ch2_end] = ch2{i}.get_threshold(r_find, avg_img{i,4});
-    
-    pos_ch1_start = peaks_raw(peaks_raw(:,5)==i,1:2);
-    pos_ch2_start = peaks_raw(peaks_raw(:,5)==i,3:4);
-    
-    % map peaks
-    trace_map_drift_ch1 = map_traces(pos_ch1_start(:,1:2), pos_ch1_end(:,1:2), pos_ch1_end(:,1:2), r_find*2)+1;
-    trace_map_drift_ch2 = map_traces(pos_ch2_start(:,1:2), pos_ch2_end(:,1:2), pos_ch2_end(:,1:2), r_find*2)+1;
-
-    tmp_ch1 = zeros(size(trace_map_drift_ch1,1),4);    
-    tmp_ch2 = zeros(size(trace_map_drift_ch2,1),4);
-    
-    % combine pairs
-    for j=1:size(trace_map_drift_ch1,1)
-        tmp_ch1(j,:) = [pos_ch1_start(trace_map_drift_ch1(j,1),1:2)+1 pos_ch1_end(trace_map_drift_ch1(j,2),1:2)+1];
-    end
-    for j=1:size(trace_map_drift_ch2,1)
-        tmp_ch2(j,:) = [pos_ch2_start(trace_map_drift_ch2(j,1),1:2)+1 pos_ch2_end(trace_map_drift_ch2(j,2),1:2)+1];
-    end   
-    pairs_for_drift_cor{i,1} = [tmp_ch1 zeros(size(tmp_ch1,1),4)];
-    pairs_for_drift_cor{i,2} = [tmp_ch2 zeros(size(tmp_ch2,1),4)];
 end
-
-% fit psf to spots
-
-s_x = 2.5;
-s_y = 2.5;
-w_fit = 5;
-h = waitbar(0,'Fitting spots for drift correction.. please wait');
-for i=1:N_movie
-    for ch = 1:2
-        for s = 1:size(pairs_for_drift_cor{i,ch},1)
-            x1 = round(pairs_for_drift_cor{i,ch}(s,1));
-            y1 = round(pairs_for_drift_cor{i,ch}(s,2));
-            x2 = round(pairs_for_drift_cor{i,ch}(s,3));
-            y2 = round(pairs_for_drift_cor{i,ch}(s,4));
-            [c1] = fit_gauss2d_mainaxis_bg(x1, y1, s_x, w_fit, avg_img{i,ch});
-            [c2] = fit_gauss2d_mainaxis_bg(x2, y2, s_x, w_fit, avg_img{i,ch+2});
-            pairs_for_drift_cor{i,ch}(s,5:6) = c1(1:2);
-            pairs_for_drift_cor{i,ch}(s,7:8) = c2(1:2);
-        end
-    end
-waitbar(i/N_movie , h, ['Fitting spots from movie... ' num2str(i) ' of ' num2str(N_movie) ' done'])
-end
-close(h);
-
-for i = 1:N_movie
-    ch1{i}.drift(1) = mean(pairs_for_drift_cor{i,1}(:,7)-pairs_for_drift_cor{i,1}(:,5))/(ch1{i}.mov_length-N_frames);
-    ch1{i}.drift(2) = mean(pairs_for_drift_cor{i,1}(:,8)-pairs_for_drift_cor{i,1}(:,6))/(ch1{i}.mov_length-N_frames);
-    ch2{i}.drift(1) = mean(pairs_for_drift_cor{i,2}(:,7)-pairs_for_drift_cor{i,2}(:,5))/(ch2{i}.mov_length-N_frames);
-    ch2{i}.drift(2) = mean(pairs_for_drift_cor{i,2}(:,8)-pairs_for_drift_cor{i,2}(:,6))/(ch2{i}.mov_length-N_frames);
-end
-end %if-loop
 
 %% Fit psf to spots
 s_x = 2.5;
@@ -399,7 +344,7 @@ for i=1:N_movie
     ch1_itraces_full = ch1{i}.int_spots_in_frames(1:length(ch1{i}.frames), peaks(peaks(:,5)==i,1:2), r_integrate);
     display(['Tracing ' channel{1} ' channel in movie #' num2str(i) ' done'])
     toc %
-    ch2_itraces_full = ch2{i}.int_spots_in_frames(ch2{i}.frames, peaks(peaks(:,5)==i,3:4), r_integrate);
+    ch2_itraces_full = ch2{i}.int_spots_in_frames(1:length(ch2{i}.frames), peaks(peaks(:,5)==i,3:4), r_integrate);
     display(['Tracing ' channel{2} ' channel in movie #' num2str(i) ' done'])
     toc %
     movnumber = cell(size(ch1_itraces_full));
@@ -441,10 +386,10 @@ for m = 1:N_movie
     for j = 1:size(merged_itraces{m,ch},1) %cycle through spots, in iEndval ascending order
         
         act_spotnum = iEndval_sorted{m,ch}(j,1);
-        x_0 = merged_itraces{m,ch}{act_spotnum}(1,2);
-        y_0 = merged_itraces{m,ch}{act_spotnum}(1,3);
-        x_0_end = round(x_0 + (ch==1)*ch1{m}.mov_length*ch1{m}.drift(1) + (ch==2)*ch2{m}.mov_length*ch2{m}.drift(1));
-        y_0_end = round(y_0 + (ch==1)*ch1{m}.mov_length*ch1{m}.drift(2) + (ch==2)*ch2{m}.mov_length*ch2{m}.drift(2));
+        x_0 = round(merged_itraces{m,ch}{act_spotnum}(1,2));
+        y_0 = round(merged_itraces{m,ch}{act_spotnum}(1,3));
+        x_0_end = round(merged_itraces{m,ch}{act_spotnum}(end,2));
+        y_0_end = round(merged_itraces{m,ch}{act_spotnum}(end,3));
         
         subplot('Position', [0.05,0.55,0.65,0.4])
         hold off
@@ -489,9 +434,11 @@ for m = 1:N_movie
         
         tmp = inputdlg(['Cutoff intensity for movie #' num2str(m) ', ' channel{ch} ' channel, spot #' ...
             num2str(act_spotnum)], 'Cutoff intensity', 1, {num2str(def_fc)});
-
+        if isempty(tmp)
+            break
+        end
         fit_cutoff{m,ch}(act_spotnum) = str2double(tmp);
-        def_fc = fit_cutoff{m,ch}(j);
+        def_fc = (str2double(tmp)>0)*str2double(tmp);
     end
     end
 end
@@ -507,12 +454,91 @@ for m = 1:N_movie
     for j = 1:size(pos_in_frame{m,1},1)
         pos_in_frame{m,1}{j} = zeros(size(merged_itraces{m,1},1),2);
         for s=1:size(pos_in_frame{m,1}{j},1)
-        pos_in_frame{m,1}{j}(s,1:2) = (merged_itraces{m,4}{s,1}(j)>                                                                                                                                                                                                                    esep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
+        pos_in_frame{m,1}{j}(s,1:2) = (merged_itraces{m,4}{s,1}(j)>=fit_cutoff{m,1}(s))*(merged_itraces{m,1}{s}(j,2:3)); % x_0, y_0 remain zero if intensity is below threshold
+        end
+    end
+
+    % channel 2
+    pos_in_frame{m,2} = cell(size(ch2{m}.frames,2),1);
+    for j = 1:size(pos_in_frame{m,2},1)
+        pos_in_frame{m,2}{j} = zeros(size(merged_itraces{m,2},1),2);
+        for s=1:size(pos_in_frame{m,2}{j},1)
+        pos_in_frame{m,2}{j}(s,1:2) = (merged_itraces{m,4}{s,2}(j)>=fit_cutoff{m,2}(s))*(merged_itraces{m,2}{s}(j,2:3)); % x_0, y_0 remain zero if intensity is below threshold
+        end
+    end
+end
+
+%% Gaussian fit position estimate algorithm - call par_fit_v1 for parallel computation
+fit_result = cell(N_movie,1);
+
+for m=1:N_movie %loop through movies
+    fit_result{m} = cell(size(merged_itraces{m,1},1),2);
+        for ch=1:2
+            for i=1:size(fit_result{m},1)
+                fit_result{m}{i,ch} = zeros(size(merged_itraces{m,ch}{i},1),3);
+                    for j=1:size(merged_itraces{m,ch}{i},1)
+                        fit_result{m}{i,ch}(j,1:3) = merged_itraces{m,ch}{i}(j,1:3)*...
+                        (merged_itraces{m,ch}{i}(j,4)>fit_cutoff{m,ch}(i));
+                    end
+                    fit_result{m}{i,ch} = [fit_result{m}{i,ch} zeros(size(fit_result{m}{i,ch},1),9)];
+            end
+        end
+    all_fit_result1 = cell(size(ch1{m}.frames,2),1);
+        for i=1:size(all_fit_result1,1)
+            all_fit_result1{i} = zeros(size(pos_in_frame{m,1}{i},1),12);
+        end
+    all_fit_result2 = cell(size(ch2{m}.frames,2),1);
+        for i=1:size(all_fit_result2,1)
+            all_fit_result2{i} = zeros(size(pos_in_frame{m,2}{i},1),12);
+        end
+end
+
+%% start fitting batch job
+mycluster=parcluster('SharedCluster');
+fit_job = batch(mycluster, @par_fit_v1, 1, {ch1, ch2, pos_in_frame, all_fit_result1, all_fit_result2, channel, path_out} ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 47 ...
+    ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
+  
+%% retrieve parallel computation data and transfer to fit_result cell
+cd(path_out)
+load('par_fit_result');
+
+for m=1:N_movie
+    for ch = 1:2
+    for i = 1:size(fit_result{m},1)
+        fit_result{m}{i,ch}(:,6:12) = par_fit_result{m}{i,ch}(:,6:12);
+    end
+    end
+end 
+
+
+%% VWCM position estimate algorithm - call chunky_par_vwcm for parallel computation
+vwcm_result = cell(N_movie,1);
+
+for m=1:N_movie %loop through movies
+    vwcm_result{m} = cell(size(merged_itraces{m,1},1),2);
+    for ch=1:2
+    for i=1:size(vwcm_result{m},1)
+    vwcm_result{m}{i,ch} = zeros(size(merged_itraces{m,ch}{i},1),3);
+    for j=1:size(merged_itraces{m,ch}{i},1)
+    vwcm_result{m}{i,ch}(j,1:3) = merged_itraces{m,ch}{i}(j,1:3)*...
+        (merged_itraces{m,ch}{i}(j,4)>fit_cutoff{m,ch}(i));
+    end
+    vwcm_result{m}{i,ch} = [vwcm_result{m}{i,ch} zeros(size(vwcm_result{m}{i,ch},1),10)];
+    end
+    end
+end
+
+%%
+wait(fit_job)
+mycluster=parcluster('SharedCluster');
+vwcm_job = batch(mycluster, @par_vwcm_v1, 1, { ch1, ch2, pos_in_frame, path_out} ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 15 ...
+    ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
   
 %% retrieve parallel computation data and transfer to vwcm_result cell
-
-vwcm_output = load('vwcm_data');
-vwcm_output = vwcm_output.output;
+cd(path_out)
+load('vwcm_data');
 
 for m=1:N_movie
     for ch = 1:2
@@ -524,6 +550,7 @@ end
         
 %% Mapping - map fitted/estimated coordinates on other channel; save all data
 if mapping
+    tic
     for m = 1:N_movie
     for i = 1:size(vwcm_result{m},1)
     for j = 1:size(vwcm_result{m}{i,1},1)
@@ -536,6 +563,7 @@ if mapping
     end
     end
     end
+    toc
 end
 
 % save data
@@ -546,4 +574,3 @@ save([path_out filesep 'all_data.mat']);
 disp('Done')
 % End of program
 
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
