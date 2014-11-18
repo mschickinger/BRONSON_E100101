@@ -440,8 +440,7 @@ toc %
 %% Determine fitting parameters
 fit_cutoff = cell(N_movie,2);
 
-fc = figure('PaperPositionMode', 'manual', 'PaperUnits', 'centimeters',...
-'PaperPosition', [0 0 25 9]);
+fc = figure('Position', scrsz);
 
 for m = 1:N_movie
     for ch = 1:2
@@ -473,10 +472,13 @@ for m = 1:N_movie
         plot(merged_itraces{m,ch}{act_spotnum}(:,1), ...
             merged_itraces{m,4}{act_spotnum,ch},...
             '-k', 'LineWidth', 0.25)
-        title('Intensity trace')
         plot(merged_itraces{m,ch}{act_spotnum}(:,1), ones(1,size(merged_itraces{m,ch}{act_spotnum},1)).*def_fc, ...
-            'color', [1 1 1].*0.5, 'LineStyle', ':')
-        
+            'color', [1 1 1].*0.7, 'LineStyle', '-.')
+        tmp = ylim;
+        set(gca, 'YTick', tmp(1):500:tmp(2), 'Layer', 'top')
+        grid on
+        xlim([merged_itraces{m,ch}{act_spotnum}(1,1) merged_itraces{m,ch}{act_spotnum}(end,1)])
+        title('Intensity trace')
         
         subplot('Position', [0.75,0.55,0.25,0.4])
         hold off
