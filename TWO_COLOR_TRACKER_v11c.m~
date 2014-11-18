@@ -508,6 +508,7 @@ for m = 1:N_movie
     end
     end
 end
+close all
 %%
 %pos_in_frame: cell of arrays that for each frame gives starting fit
 %coordinates for all spots in respective channel. If both parameters
@@ -566,7 +567,7 @@ save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks
 %% start position estimator batch job
 mycluster=parcluster('SharedCluster');
 pos_job = batch(mycluster, @par_pos_v1, 1, {path_out} ...
-    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 47 ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 6 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'],...
     [matlab_dir filesep 'FM_applications'], [matlab_dir filesep 'DEVELOPMENT']});
 

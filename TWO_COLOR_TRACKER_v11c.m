@@ -169,7 +169,7 @@ if drift_cor
     q = 384;
     drift_cor = cell(N_movie,1);
     
-    display('Calculating drift displacements')
+    display('Calculating drift displacements.. please wait');
     % Go by intervals
     for m=1:N_movie
         drift_cor{m} = zeros(ceil(length(ch2{m}.frames)/interval),2);
@@ -189,7 +189,7 @@ if drift_cor
     % Show drift paths
     for m = 1:N_movie
     close all
-    figure('Position', [scrsz(1) scrsz(2)/4 scrsz(3) scrsz(4)/2])
+    figure('Position', [scrsz(1) scrsz(4)/4 scrsz(3) scrsz(4)/2])
     subplot(1,3,1)
     hold off 
     plot(drift_cor{m}(:,1),drift_cor{m}(:,2), 'k-')
@@ -440,8 +440,7 @@ toc %
 %% Determine fitting parameters
 fit_cutoff = cell(N_movie,2);
 
-fc = figure('PaperPositionMode', 'manual', 'PaperUnits', 'centimeters',...
-'PaperPosition', [0 0 25 9]);
+fc = figure('Position', scrsz);
 
 for m = 1:N_movie
     for ch = 1:2
@@ -473,10 +472,13 @@ for m = 1:N_movie
         plot(merged_itraces{m,ch}{act_spotnum}(:,1), ...
             merged_itraces{m,4}{act_spotnum,ch},...
             '-k', 'LineWidth', 0.25)
-        title('Intensity trace')
         plot(merged_itraces{m,ch}{act_spotnum}(:,1), ones(1,size(merged_itraces{m,ch}{act_spotnum},1)).*def_fc, ...
-            'color', [1 1 1].*0.5, 'LineStyle', ':')
-        
+            'color', [1 1 1].*0.7, 'LineStyle', '-.')
+        tmp = ylim;
+        set(gca, 'YTick', tmp(1):500:tmp(2), 'Layer', 'top')
+        grid on
+        xlim([merged_itraces{m,ch}{act_spotnum}(1,1) merged_itraces{m,ch}{act_spotnum}(end,1)])
+        title('Intensity trace')
         
         subplot('Position', [0.75,0.55,0.25,0.4])
         hold off
@@ -506,6 +508,7 @@ for m = 1:N_movie
     end
     end
 end
+close all
 %%
 %pos_in_frame: cell of arrays that for each frame gives starting fit
 %coordinates for all spots in respective channel. If both parameters
@@ -534,7 +537,7 @@ end
 
 %% Save all relevant data; prepare for batch job assignment
 data = cell(N_movie,1);
-
+cd(path_out)
 for m=1:N_movie %loop through movies
     data{m} = cell(size(merged_itraces{m,1},1),2);
         for s=1:size(data{m},1)
@@ -563,8 +566,8 @@ save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks
 
 %% start position estimator batch job
 mycluster=parcluster('SharedCluster');
-pos_job = batch(mycluster, @par_pos_v1, 1, {path_out} ...
-    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 47 ...
+pos_job = custom_batch('matthiasschickinger', mycluster, @par_pos_v1, 1, {path_out} ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'],...
     [matlab_dir filesep 'FM_applications'], [matlab_dir filesep 'DEVELOPMENT']});
 
