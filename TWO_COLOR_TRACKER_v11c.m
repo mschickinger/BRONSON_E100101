@@ -1,10 +1,17 @@
-% What's new in version 10c?
+% What's new in version 11c?
 
-% Uses VWCM method for spot position estimate in individual frames (in both
-% channels). Calls function chunky_par_vwcm for parallel computation.
+% Time per frame in millisec is recorded in data -> important for
+% processing later on.
+% Took the place of unused parameter 'Minimal length' in input dialog.
 
-% Also includes drift (x,y) correction routine (optional) and new
-% intensity tracer, like versions 10a and 10b;
+% Relevant output data is written to structs. The rest is discarded.
+
+% x,y-Drift correction is fully implemented
+
+% calls batch script for both gaussian fit and vwcm position estimate +
+% immediate mapping of estimated positions
+
+% can be shut down after batch job submission without data loss.
 
 %% startup
 clc, clear all, close all
@@ -31,6 +38,11 @@ channel{2} = rgb{colors(2)};
                 'ListString', channel, 'SelectionMode', 'single',...
                 'OKString', 'Confirm');           
 channel_bound=rgb{chb};
+if chb == 1
+    chm = 2;
+else
+    chm = 1;
+end
 
 %% LOAD STACK OF MOVIES
 pname=uigetdir(data_dir,'Choose the folder with all .fits files.');
@@ -47,9 +59,9 @@ mkdir(path_out)
 
 %% SET PARAMETER
 input = {'First Frame:', 'Last Frame (-1=all):', ['Sequence ' channel{1} ':'], ['Sequence ' channel{2} ':'],... % sample options
-    'Radius of peak [pixel]:', 'Integration radius [pixel]:', 'Minimal length [frames]:',...
+    'Radius of peak [pixel]:', 'Integration radius [pixel]:', 'Time per frame (in ms):',...
     'Average over first N_frames:'};
-input_default = {'2', '-1', '1', '1', '4', '3', '20', '100'};
+input_default = {'2', '-1', '1', '1', '4', '3', '50', '100'};
 tmp = inputdlg(input, 'Parameters', 1, input_default);
 
 first = round(str2double(tmp(1))); % first image to read from file
@@ -69,7 +81,7 @@ for i=1:size(tmp{4},2)
 end
 r_find = str2double(tmp(5)); % radius used to find spots
 r_integrate = str2double(tmp(6)); % radius used for integration of intensities
-min_length = str2double(tmp(7)); % minimal number of found spots in a trace
+time_per_frame = str2double(tmp(7)); % time per frame used during acquisition
 N_frames = str2double(tmp(8)); % in get_h_min, average over first N_frames is used
 
 %% generate movie classes
@@ -98,6 +110,8 @@ if mapping
     map2TO1=load([mapping_dir mapping_file_2TO1]);
     tform_2TO1 = map2TO1.tform; %['tform_' channel{2} 'ON' channel{1}];
     display(['loaded ' channel{2} ' TO ' channel{1} ' mapping file: ' mapping_dir mapping_file_2TO1]);
+    
+    tform = {tform_2TO1, tform_1TO2};
 end
 
 %% compute average images
@@ -150,9 +164,59 @@ display(['You have ' num2str(N_peaks_raw) ' pairs'])
 %% drift correction
 if drift_cor
     
-display('Perform drift correction now or hit any key to proceed')
-pause
-
+    interval = 100;
+    p = 129;
+    q = 384;
+    drift_cor = cell(N_movie,1);
+    
+    display('Calculating drift displacements')
+    % Go by intervals
+    for m=1:N_movie
+        drift_cor{m} = zeros(ceil(length(ch2{m}.frames)/interval),2);
+        for i = 1:size(drift_cor{m},1)
+        ai = zeros(512,512);
+        for j = 1:min([interval length(ch2{m}.frames)-(i-1)*interval])
+            ai = ai + ch2{m}.readFrame(ch2{m}.frames((i-1)*interval+j));
+        end
+        ai = ai./interval;
+        tmp = normxcorr2(ai(p:q,p:q), avg_img{m,2}(p:q,p:q));
+        [v, ind] = max(tmp(:));
+        [a, b] = ind2sub(size(tmp),ind);
+        drift_cor{m}(i,1) = 256-b;
+        drift_cor{m}(i,2) = 256-a;
+        end
+    end
+    % Show drift paths
+    for m = 1:N_movie
+    close all
+    figure('Position', [scrsz(1) scrsz(2)/4 scrsz(3) scrsz(4)/2])
+    subplot(1,3,1)
+    hold off 
+    plot(drift_cor{m}(:,1),drift_cor{m}(:,2), 'k-')
+    hold on
+    plot(drift_cor{m}(:,1),drift_cor{m}(:,2), 'k.', 'MarkerSize', 8)
+    xlim([min(drift_cor{m}(:,1))-1 max(drift_cor{m}(:,1))+1])
+    ylim([min(drift_cor{m}(:,2))-1 max(drift_cor{m}(:,2))+1])
+    axis equal
+    title(['Drift path for movie #' num2str(m)])
+    subplot(1,3,2)
+    imagesc(avg_img{m,chb}), axis image, colormap gray, title(['First ' num2str(N_frames) ' frames'])
+    subplot(1,3,3)
+    imagesc(avg_img{m,chb}), axis image, colormap gray, title(['Last ' num2str(N_frames) ' frames'])
+    pause
+    end
+    
+    % Write drift array
+    for m = 1:N_movie
+    ch1{m}.drift = zeros(length(ch1{m}.frames),2);
+    for i = 1:length(ch1{m}.frames)
+        ch1{m}.drift(i,:) = drift_cor{m}(ceil(i/interval),:);
+    end
+    ch2{m}.drift = zeros(length(ch2{m}.frames),2);
+    for i = 1:length(ch2{m}.frames)
+        ch2{m}.drift(i,:) = drift_cor{m}(ceil(i/interval),:);
+    end
+end
 end
 
 %% Fit psf to spots
@@ -468,109 +532,42 @@ for m = 1:N_movie
     end
 end
 
-%% Gaussian fit position estimate algorithm - call par_fit_v1 for parallel computation
-fit_result = cell(N_movie,1);
+%% Save all relevant data; prepare for batch job assignment
+data = cell(N_movie,1);
 
 for m=1:N_movie %loop through movies
-    fit_result{m} = cell(size(merged_itraces{m,1},1),2);
-        for ch=1:2
-            for i=1:size(fit_result{m},1)
-                fit_result{m}{i,ch} = zeros(size(merged_itraces{m,ch}{i},1),3);
-                    for j=1:size(merged_itraces{m,ch}{i},1)
-                        fit_result{m}{i,ch}(j,1:3) = merged_itraces{m,ch}{i}(j,1:3)*...
-                        (merged_itraces{m,ch}{i}(j,4)>fit_cutoff{m,ch}(i));
-                    end
-                    fit_result{m}{i,ch} = [fit_result{m}{i,ch} zeros(size(fit_result{m}{i,ch},1),9)];
+    data{m} = cell(size(merged_itraces{m,1},1),2);
+        for s=1:size(data{m},1)
+            for ch = 1:2
+                data{m}{s,ch}.frames = merged_itraces{m,ch}{s}(:,1);
+                data{m}{s,ch}.pos0 = merged_itraces{m,ch}{s}(:,2:3);
+                data{m}{s,ch}.itrace = merged_itraces{m,ch}{s}(:,4);
+                data{m}{s,ch}.med_itrace = merged_itraces{m,4}{s,ch}(:);
             end
         end
-    all_fit_result1 = cell(size(ch1{m}.frames,2),1);
-        for i=1:size(all_fit_result1,1)
-            all_fit_result1{i} = zeros(size(pos_in_frame{m,1}{i},1),12);
-        end
-    all_fit_result2 = cell(size(ch2{m}.frames,2),1);
-        for i=1:size(all_fit_result2,1)
-            all_fit_result2{i} = zeros(size(pos_in_frame{m,2}{i},1),12);
-        end
 end
+% file that the position data from gF and vwcm estimators will be added to
+save -v7.3 'data_spot_pairs.mat' 'data' 'path_out'
 
-%% start fitting batch job
+% data needed for processing (batch jobs and later)
+save -v7.3 'data_proc.mat' 'pos_in_frame' 'time_per_frame' 'tform' 'mapping'
+
+% movie objects
+save -v7.3 'movie_objects.mat' 'ch1' 'ch2'
+
+% stuff that might be useful for plotting figures
+save 'data_plot.mat' 'channel' 'fit_cutoff' 'chb' 'chm'
+
+% for archiving purposes
+save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks_raw' 'peaks' %'last_drift'
+
+%% start position estimator batch job
 mycluster=parcluster('SharedCluster');
-fit_job = batch(mycluster, @par_fit_v1, 1, {ch1, ch2, pos_in_frame, all_fit_result1, all_fit_result2, channel, path_out} ...
+pos_job = batch(mycluster, @par_pos_v1, 1, {path_out} ...
     ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 47 ...
-    ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
-  
-%% retrieve parallel computation data and transfer to fit_result cell
-cd(path_out)
-load('par_fit_result');
+    ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'],...
+    [matlab_dir filesep 'FM_applications'], [matlab_dir filesep 'DEVELOPMENT']});
 
-for m=1:N_movie
-    for ch = 1:2
-    for i = 1:size(fit_result{m},1)
-        fit_result{m}{i,ch}(:,6:12) = par_fit_result{m}{i,ch}(:,6:12);
-    end
-    end
-end 
-
-
-%% VWCM position estimate algorithm - call chunky_par_vwcm for parallel computation
-vwcm_result = cell(N_movie,1);
-
-for m=1:N_movie %loop through movies
-    vwcm_result{m} = cell(size(merged_itraces{m,1},1),2);
-    for ch=1:2
-    for i=1:size(vwcm_result{m},1)
-    vwcm_result{m}{i,ch} = zeros(size(merged_itraces{m,ch}{i},1),3);
-    for j=1:size(merged_itraces{m,ch}{i},1)
-    vwcm_result{m}{i,ch}(j,1:3) = merged_itraces{m,ch}{i}(j,1:3)*...
-        (merged_itraces{m,ch}{i}(j,4)>fit_cutoff{m,ch}(i));
-    end
-    vwcm_result{m}{i,ch} = [vwcm_result{m}{i,ch} zeros(size(vwcm_result{m}{i,ch},1),10)];
-    end
-    end
-end
-
-%%
-wait(fit_job)
-mycluster=parcluster('SharedCluster');
-vwcm_job = batch(mycluster, @par_vwcm_v1, 1, { ch1, ch2, pos_in_frame, path_out} ...
-    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 15 ...
-    ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'], [matlab_dir filesep 'FM_applications']});
-  
-%% retrieve parallel computation data and transfer to vwcm_result cell
-cd(path_out)
-load('vwcm_data');
-
-for m=1:N_movie
-    for ch = 1:2
-    for i = 1:size(vwcm_result{m},1)
-        vwcm_result{m}{i,ch}(:,6:13) = vwcm_output{m}{i,ch}(:,:);
-    end
-    end
-end     
-        
-%% Mapping - map fitted/estimated coordinates on other channel; save all data
-if mapping
-    tic
-    for m = 1:N_movie
-    for i = 1:size(vwcm_result{m},1)
-    for j = 1:size(vwcm_result{m}{i,1},1)
-    vwcm_result{m}{i,1}(j,4:5) = transformPointsInverse(tform_2TO1, vwcm_result{m}{i,1}(j,6:7));  %%this takes coords in ch1 and transforms them to coords in ch2
-    fit_result{m}{i,1}(j,4:5) = transformPointsInverse(tform_2TO1, fit_result{m}{i,1}(j,6:7));
-    end
-    for j = 1:size(vwcm_result{m}{i,2},1)
-    vwcm_result{m}{i,2}(j,4:5) = transformPointsInverse(tform_1TO2, vwcm_result{m}{i,2}(j,6:7));  %%this takes coords in ch2 and transforms them to coords in ch1
-    fit_result{m}{i,2}(j,4:5) = transformPointsInverse(tform_1TO2, fit_result{m}{i,2}(j,6:7));
-    end
-    end
-    end
-    toc
-end
-
-% save data
-save([path_out filesep 'all_data.mat']);
-
-%  Plotting data will be performed elsewhere. 
 
 disp('Done')
 % End of program
-
