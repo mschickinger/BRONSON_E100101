@@ -1,9 +1,11 @@
 % What's new in version 10c?
 
-% Uses VWCM method for spot position estimate in individual frames (in both
+% Ready for use on parallel cluster.
+
+% Uses both gaussian fit and VWCM method for spot position estimate in individual frames (in both
 % channels). Calls function chunky_par_vwcm for parallel computation.
 
-% Also includes drift (x,y) correction routine (optional) and new
+% Also includes drift (x,y) correction routine (optional and manual) and new
 % intensity tracer, like versions 10a and 10b;
 
 %% startup
