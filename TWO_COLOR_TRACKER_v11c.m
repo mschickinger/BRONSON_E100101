@@ -542,7 +542,6 @@ for m=1:N_movie %loop through movies
     data{m} = cell(size(merged_itraces{m,1},1),2);
         for s=1:size(data{m},1)
             for ch = 1:2
-                data{m}{s,ch}.frames = merged_itraces{m,ch}{s}(:,1);
                 data{m}{s,ch}.pos0 = merged_itraces{m,ch}{s}(:,2:3);
                 data{m}{s,ch}.itrace = merged_itraces{m,ch}{s}(:,4);
                 data{m}{s,ch}.med_itrace = merged_itraces{m,4}{s,ch}(:);
