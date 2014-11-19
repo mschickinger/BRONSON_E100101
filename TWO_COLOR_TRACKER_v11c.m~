@@ -537,7 +537,7 @@ end
 
 %% Save all relevant data; prepare for batch job assignment
 data = cell(N_movie,1);
-
+cd(path_out)
 for m=1:N_movie %loop through movies
     data{m} = cell(size(merged_itraces{m,1},1),2);
         for s=1:size(data{m},1)
@@ -566,8 +566,8 @@ save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks
 
 %% start position estimator batch job
 mycluster=parcluster('SharedCluster');
-pos_job = batch(mycluster, @par_pos_v1, 1, {path_out} ...
-    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 6 ...
+pos_job = custom_batch('matthiasschickinger', mycluster, @par_pos_v1, 1, {path_out} ...
+    ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'],...
     [matlab_dir filesep 'FM_applications'], [matlab_dir filesep 'DEVELOPMENT']});
 
