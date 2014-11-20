@@ -552,7 +552,11 @@ end
 save -v7.3 'data_spot_pairs.mat' 'data' 'path_out'
 
 % data needed for processing (batch jobs and later)
+if mapping
 save -v7.3 'data_proc.mat' 'pos_in_frame' 'time_per_frame' 'tform' 'mapping'
+else
+save -v7.3 'data_proc.mat' 'pos_in_frame' 'time_per_frame' 'mapping'    
+end
 
 % movie objects
 save -v7.3 'movie_objects.mat' 'ch1' 'ch2'
@@ -561,7 +565,7 @@ save -v7.3 'movie_objects.mat' 'ch1' 'ch2'
 save 'data_plot.mat' 'channel' 'fit_cutoff' 'chb' 'chm'
 
 % for archiving purposes
-save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks_raw' 'peaks' %'last_drift'
+save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks_raw' 'peaks'
 
 %% start position estimator batch job
 mycluster=parcluster('SharedCluster');
