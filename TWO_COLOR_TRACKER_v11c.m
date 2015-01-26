@@ -112,6 +112,8 @@ if mapping
     display(['loaded ' channel{2} ' TO ' channel{1} ' mapping file: ' mapping_dir mapping_file_2TO1]);
     
     tform = {tform_2TO1, tform_1TO2};
+else
+    tform = cell{2,1};
 end
 
 %% compute average images
@@ -555,7 +557,7 @@ save -v7.3 'data_spot_pairs.mat' 'data' 'path_out'
 if mapping
 save -v7.3 'data_proc.mat' 'pos_in_frame' 'time_per_frame' 'tform' 'mapping'
 else
-save -v7.3 'data_proc.mat' 'pos_in_frame' 'time_per_frame' 'mapping'    
+save -v7.3 'data_proc.mat' 'pos_in_frame' 'time_per_frame' 'tform' 'mapping'    
 end
 
 % movie objects
