@@ -92,7 +92,8 @@ ch1 = cell(N_movie,1);
 ch2 = cell(N_movie,1);
 
 for i=1:N_movie
-    ch1{i} = movie(pname, files_ch1{i}, first(i), last(i), sequences{i,ch}); % pname, fname, first, last, sequence
+    ch1{i} = movie(pname, files_ch1{i}, first(i), last(i), sequences{i,1}); % pname, fname, first, last, sequence
+    ch2{i} = movie(pname, files_ch2{i}, first(i), last(i), sequences{i,2}); % pname, fname, first, last, sequence
 end
 
 %%
@@ -115,7 +116,7 @@ if mapping
     
     tform = {tform_2TO1, tform_1TO2};
 else
-    tform = cell{2,1};
+    tform = cell(2,1);
 end
 
 %% compute average images
