@@ -204,7 +204,7 @@ if drift_cor
     subplot(1,3,2)
     imagesc(avg_img{m,chb}), axis image, colormap gray, title(['First ' num2str(N_frames) ' frames'])
     subplot(1,3,3)
-    imagesc(avg_img{m,chb}), axis image, colormap gray, title(['Last ' num2str(N_frames) ' frames'])
+    imagesc(avg_img{m,chb+2}), axis image, colormap gray, title(['Last ' num2str(N_frames) ' frames'])
     pause
     end
     
