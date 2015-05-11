@@ -1,3 +1,4 @@
+
 % What's new in version 12c?
 
 % Individual assignment of parameters such as first and last frame,
@@ -92,7 +93,8 @@ ch1 = cell(N_movie,1);
 ch2 = cell(N_movie,1);
 
 for i=1:N_movie
-    ch1{i} = movie(pname, files_ch1{i}, first(i), last(i), sequences{i,ch}); % pname, fname, first, last, sequence
+    ch1{i} = movie(pname, files_ch1{i}, first(i), last(i), sequences{i,1}); % pname, fname, first, last, sequence
+    ch2{i} = movie(pname, files_ch2{i}, first(i), last(i), sequences{i,2}); % pname, fname, first, last, sequence
 end
 
 %%
@@ -115,7 +117,7 @@ if mapping
     
     tform = {tform_2TO1, tform_1TO2};
 else
-    tform = cell{2,1};
+    tform = cell(2,1);
 end
 
 %% compute average images
@@ -441,15 +443,22 @@ for i=1:N_movie
 end
 display('itraces complete')
 toc %
-%% Determine fitting parameters
-fit_cutoff = cell(N_movie,2);
 
+%% Determine fitting parameters
+cut = questdlg('Intensity threshold or maximum frame?','Cutoff method','Intensity','Frame','Frame');
+fit_cutoff = cell(N_movie,2);
 fc = figure('Position', scrsz);
 
 for m = 1:N_movie
     for ch = 1:2
-    fit_cutoff{m,ch} = zeros(size(merged_itraces{m,ch},1),1);
-    def_fc = iEndval_sorted{m,ch}(1,2);
+        
+        if cut(1) == 'I'
+            fit_cutoff{m,ch} = zeros(size(merged_itraces{m,ch},1),1);
+            def_fc = iEndval_sorted{m,ch}(1,2);
+        else
+            def_fc = (ch==1)*length(ch1{m}.frames)+(ch==2)*length(ch2{m}.frames);
+            fit_cutoff{m,ch} = def_fc.*ones(size(merged_itraces{m,ch},1),1);
+        end
     for j = 1:size(merged_itraces{m,ch},1) %cycle through spots, in iEndval ascending order
         
         act_spotnum = iEndval_sorted{m,ch}(j,1);
@@ -466,24 +475,7 @@ for m = 1:N_movie
         plot (1:length(iEndval_sorted{m,ch}),ones(1,length(iEndval_sorted{m,ch}))*1.5*avg_iEndval_tenth(m,ch), '-b');
         plot (1:length(iEndval_sorted{m,ch}),ones(1,length(iEndval_sorted{m,ch}))*1.5*avg_iEndval(m,ch), '-k');
         title('Average end value distribution (ascending order)')
-        
-        subplot('Position', [0.05,0.05,0.65,0.4])
-        hold off
-        plot(merged_itraces{m,ch}{act_spotnum}(:,1), ...
-            merged_itraces{m,ch}{act_spotnum}(:,4),...
-            ['-' channel{ch}(1)], 'LineWidth', 0.5)
-        hold on
-        plot(merged_itraces{m,ch}{act_spotnum}(:,1), ...
-            merged_itraces{m,4}{act_spotnum,ch},...
-            '-k', 'LineWidth', 0.25)
-        plot(merged_itraces{m,ch}{act_spotnum}(:,1), ones(1,size(merged_itraces{m,ch}{act_spotnum},1)).*def_fc, ...
-            'color', [1 1 1].*0.7, 'LineStyle', '-.')
-        tmp = ylim;
-        set(gca, 'YTick', tmp(1):500:tmp(2), 'Layer', 'top')
-        grid on
-        xlim([merged_itraces{m,ch}{act_spotnum}(1,1) merged_itraces{m,ch}{act_spotnum}(end,1)])
-        title('Intensity trace')
-        
+
         subplot('Position', [0.75,0.55,0.25,0.4])
         hold off
         plot_subframe(avg_img{m,ch}, x_0, y_0, 6)
@@ -502,13 +494,47 @@ for m = 1:N_movie
         axis square
         set(gca, 'YDir', 'normal')
         
-        tmp = inputdlg(['Cutoff intensity for movie #' num2str(m) ', ' channel{ch} ' channel, spot #' ...
-            num2str(act_spotnum)], 'Cutoff intensity', 1, {num2str(def_fc)});
-        if isempty(tmp)
-            break
+        subplot('Position', [0.05,0.05,0.65,0.4])
+        hold off
+        plot(merged_itraces{m,ch}{act_spotnum}(:,1), ...
+            merged_itraces{m,ch}{act_spotnum}(:,4),...
+            ['-' channel{ch}(1)], 'LineWidth', 0.5)
+        hold on
+        plot(merged_itraces{m,ch}{act_spotnum}(:,1), ...
+            merged_itraces{m,4}{act_spotnum,ch},...
+            '-k', 'LineWidth', 0.25)
+        tmp = ylim;
+        if cut(1) == 'I'
+            plot(merged_itraces{m,ch}{act_spotnum}(:,1), ones(1,size(merged_itraces{m,ch}{act_spotnum},1)).*def_fc, ...
+                'color', [1 1 1].*0.7, 'LineStyle', '-.')
+        else
+            plot([def_fc def_fc], [tmp(1) tmp(2)],'color', [1 1 1].*0.7, 'LineStyle', '-.')
         end
-        fit_cutoff{m,ch}(act_spotnum) = str2double(tmp);
-        def_fc = (str2double(tmp)>0)*str2double(tmp);
+        ylim(tmp)
+        set(gca, 'YTick', tmp(1):500:tmp(2), 'Layer', 'top')
+        grid on
+        xlim([merged_itraces{m,ch}{act_spotnum}(1,1) merged_itraces{m,ch}{act_spotnum}(end,1)])
+        title('Intensity trace')
+        
+        % determine cutoff
+        if cut(1) == 'I'
+            tmp = inputdlg(['Cutoff intensity for movie #' num2str(m) ', ' channel{ch} ' channel, spot #' ...
+                num2str(act_spotnum)], 'Cutoff intensity', 1, {num2str(def_fc)});
+            if isempty(tmp)
+                break
+            end
+            fit_cutoff{m,ch}(act_spotnum) = str2double(tmp);
+            def_fc = (str2double(tmp)>0)*str2double(tmp);
+        else
+            h = impoint(gca);
+            if size(h,1) == 0
+                break
+            end
+            tmp = getPosition(h);
+            tmp = tmp(1);
+            fit_cutoff{m,ch}(act_spotnum) = tmp;
+            def_fc = (tmp>0)*tmp;
+        end        
     end
     end
 end
@@ -525,7 +551,11 @@ for m = 1:N_movie
     for j = 1:size(pos_in_frame{m,1},1)
         pos_in_frame{m,1}{j} = zeros(size(merged_itraces{m,1},1),2);
         for s=1:size(pos_in_frame{m,1}{j},1)
-        pos_in_frame{m,1}{j}(s,1:2) = (merged_itraces{m,4}{s,1}(j)>=fit_cutoff{m,1}(s))*(merged_itraces{m,1}{s}(j,2:3)); % x_0, y_0 remain zero if intensity is below threshold
+            if cut(1) == 'I'
+                pos_in_frame{m,1}{j}(s,1:2) = (merged_itraces{m,4}{s,1}(j)>=fit_cutoff{m,1}(s))*merged_itraces{m,1}{s}(j,2:3); % x_0, y_0 remain zero if intensity is below threshold
+            else
+                pos_in_frame{m,1}{j}(s,1:2) = (j<=fit_cutoff{m,1}(s))*merged_itraces{m,1}{s}(j,2:3); % x_0, y_0 remain zero if frame is above maximum frame
+            end
         end
     end
 
@@ -534,7 +564,11 @@ for m = 1:N_movie
     for j = 1:size(pos_in_frame{m,2},1)
         pos_in_frame{m,2}{j} = zeros(size(merged_itraces{m,2},1),2);
         for s=1:size(pos_in_frame{m,2}{j},1)
-        pos_in_frame{m,2}{j}(s,1:2) = (merged_itraces{m,4}{s,2}(j)>=fit_cutoff{m,2}(s))*(merged_itraces{m,2}{s}(j,2:3)); % x_0, y_0 remain zero if intensity is below threshold
+            if cut(1) == 'I'
+                pos_in_frame{m,2}{j}(s,1:2) = (merged_itraces{m,4}{s,2}(j)>=fit_cutoff{m,2}(s))*merged_itraces{m,2}{s}(j,2:3); % x_0, y_0 remain zero if intensity is below threshold
+            else
+                pos_in_frame{m,2}{j}(s,1:2) = (j<=fit_cutoff{m,2}(s))*merged_itraces{m,2}{s}(j,2:3); % x_0, y_0 remain zero if frame is above maximum frame
+            end
         end
     end
 end
@@ -566,7 +600,7 @@ end
 save -v7.3 'movie_objects.mat' 'ch1' 'ch2'
 
 % stuff that might be useful for plotting figures
-save 'data_plot.mat' 'channel' 'fit_cutoff' 'chb' 'chm'
+save 'data_plot.mat' 'channel' 'cut' 'fit_cutoff' 'chb' 'chm'
 
 % for archiving purposes
 save -v7.3 'data_archive.mat' 'avg_img' 'N_frames' 'r_find' 'r_integrate' 'peaks_raw' 'peaks'
@@ -577,7 +611,6 @@ pos_job = custom_batch('matthiasschickinger', mycluster, @par_pos_v1, 1, {path_o
     ,'CaptureDiary',true, 'CurrentDirectory', '.', 'Pool', 63 ...
     ,'AdditionalPaths', {[matlab_dir filesep 'TOOLBOX_GENERAL'], [matlab_dir filesep 'TOOLBOX_MOVIE'],...
     [matlab_dir filesep 'FM_applications'], [matlab_dir filesep 'DEVELOPMENT']});
-
 
 disp('Done')
 % End of program
