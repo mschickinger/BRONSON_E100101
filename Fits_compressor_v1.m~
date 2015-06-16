@@ -61,7 +61,6 @@ for i=1:N_movie
     end
 end
 
-%% Create and write movies
 for m = 1:N_movie
     for ch = 1:2
         for i = 1:floor(length(movies{m,ch}.frames)/movies{m,ch}.N_frame_per_fits)
@@ -102,9 +101,9 @@ for m = 1:N_movie
             num2str(ceil(length(movies{m,ch}.frames)/movies{m,ch}.N_frame_per_fits)) ...
             ' in movie #' num2str(m) ', channel ' num2str(ch)])
         fitswrite(mov_out, [pname filesep movies{m,ch}.fname{i+1}])
-        for k = i+2:length(movies{m,ch}.fname)
-            display(['Deleting file: ' movies{m,ch}.fname{k}])
-            delete([pname filesep movies{m,ch}.fname{k}])
+        for j = i+2:length(movies{m,ch}.fname)
+            delete([pname filesep movies{m,ch}.fname{i}])
+            dip
         end
     end
 end
