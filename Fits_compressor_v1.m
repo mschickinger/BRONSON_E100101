@@ -78,7 +78,7 @@ for m = 1:N_movie
             end
             mov_out = int16(mov_out - 2^15);
             % Write output movie
-            disp(frame_out)
+            %disp(frame_out)
             display(['Writing compressed .fits file #' num2str(i) ' of ' ...
                 num2str(ceil(length(movies{m,ch}.frames)/movies{m,ch}.N_frame_per_fits)) ...
                 ' in movie #' num2str(m) ', channel ' num2str(ch)])
@@ -97,7 +97,7 @@ for m = 1:N_movie
         end
         mov_out = int16(mov_out - 2^15);
         % Write output movie
-        disp(frame_out)
+        %disp(frame_out)
         display(['Writing compressed .fits file #' num2str(i+1) ' of ' ...
             num2str(ceil(length(movies{m,ch}.frames)/movies{m,ch}.N_frame_per_fits)) ...
             ' in movie #' num2str(m) ', channel ' num2str(ch)])
