@@ -192,7 +192,7 @@ if drift_cor
         end
     end
 end
-%% Show drift paths and certify last frame assignment
+%% Show drift paths
 if drift_cor
     for m = 1:N_movie
         close all
@@ -267,8 +267,8 @@ if drift_cor
                     ch1{m}.frames = ch1{m}.getFrames(ch1{m}.sequence, ch1{m}.first, ch1{m}.last);
                     ch2{m}.last = tmp;
                     ch2{m}.frames = ch2{m}.getFrames(ch2{m}.sequence, ch2{m}.first, ch2{m}.last);
-                    avg_img{i, 3} = ch1{i}.average_image_last(N_frames); % for fitting threshold assignment
-                    avg_img{i, 4} = ch2{i}.average_image_last(N_frames); % for fitting threshold assignment
+                    avg_img{m,3} = ;
+                    avg_img{m,4} = ;
                 end
             end
         end
