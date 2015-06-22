@@ -52,7 +52,7 @@ mkdir(path_out)
 
 %% SET PARAMETER
 button = questdlg('Assign parameters individually for each movie?');
-options.Resize = 'on';
+options.Resize = 'off';
 input = {'First Frame:', 'Last Frame (-1=all):', ['Sequence ' channel{1} ':'], ['Sequence ' channel{2} ':'],... % sample options
     'Radius of peak [pixel]:', 'Integration radius [pixel]:', 'Time per frame (in ms):',...
     'Average over first N_frames:'};
@@ -103,7 +103,7 @@ mapping = strcmp(button, 'Yes');
 
 button = questdlg('Perform drift correction?','Drift correction','Yes','No','Yes');
 drift_cor = strcmp(button, 'Yes');
-%%
+
 if mapping
     [mapping_file_1TO2, mapping_dir]=uigetfile(data_dir,['Choose the ' channel{1} '2' channel{2} ' mapping file:']);
     map1TO2 =load([mapping_dir mapping_file_1TO2], 'tform');
@@ -190,6 +190,7 @@ if drift_cor
         drift_by_int{m}(i,1) = 256-b;
         drift_by_int{m}(i,2) = 256-a;
         end
+        display(['Movie #' num2str(m) ': Drift calculation done.'])
     end
 end
 %% Show drift paths and certify last frame assignment
@@ -267,10 +268,11 @@ if drift_cor
                     ch1{m}.frames = ch1{m}.getFrames(ch1{m}.sequence, ch1{m}.first, ch1{m}.last);
                     ch2{m}.last = tmp;
                     ch2{m}.frames = ch2{m}.getFrames(ch2{m}.sequence, ch2{m}.first, ch2{m}.last);
-                    avg_img{i, 3} = ch1{i}.average_image_last(N_frames); % for fitting threshold assignment
-                    avg_img{i, 4} = ch2{i}.average_image_last(N_frames); % for fitting threshold assignment
+                    avg_img{m,3} = ch1{m}.average_image_last(N_frames); % for fitting threshold assignment
+                    avg_img{m,4} = ch2{m}.average_image_last(N_frames); % for fitting threshold assignment
                 end
             end
+            close(gcf)
         end
     end
 end
