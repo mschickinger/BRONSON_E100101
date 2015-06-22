@@ -61,18 +61,19 @@ for m = 1:N_movie
         end
     end
 end
+
+convert_objects = questdlg('Also convert movie objects?','Objects also?', 'Yes');
+convert_objects = strcmp(convert_objects,'Yes');
+if convert_objects
+    [object_filename, object_path] = uigetfile(pname,'Select the old movie object file:');
+end
+
 %% generate movie classes
 movies = cell(N_movie,2);
 for i=1:N_movie
     for ch = 1:2
     movies{i,ch} = movie(pname, files{ch}{i}, first(i), last(i), sequences{i,ch}); % pname, fname, first, last, sequence
     end
-end
-
-convert_objects = questdlg('Also convert movie objects?','Objects also?', 'Yes');
-convert_objects = strcmp(convert_objects,'Yes');
-if convert_objects
-    [object_filename, object_path] = uigetfile(pname,'Select the old movie object file:');
 end
 
 %% Create and write movies
@@ -99,24 +100,30 @@ for m = 1:N_movie
             fitswrite(mov_out, [pname filesep movies{m,ch}.fname{i}])
         end
         % Remaining frames (last movie)
-        mov_out = zeros(movies{m,ch}.sizeX,movies{m,ch}.sizeY,...
-            rem(length(movies{m,ch}.frames),movies{m,ch}.N_frame_per_fits), 'int32');
-        frame_out = 0;
-        for n = movies{m,ch}.frames(end-size(mov_out,3)+1:end)
-            % read Frame to tmp
-            tmp = movies{m,ch}.readFrame(n);
-            frame_out = frame_out + 1;
-            % fill output
-            mov_out(:,:,frame_out) = int32(tmp);
+        if isempty(i)
+            i = 0; % needed for movie lengths < 4095 (i = [] after first loop)
         end
-        mov_out = int16(mov_out - 2^15);
-        % Write output movie
-        %disp(frame_out)
-        display(['Writing compressed .fits file #' num2str(i+1) ' of ' ...
-            num2str(ceil(length(movies{m,ch}.frames)/movies{m,ch}.N_frame_per_fits)) ...
-            ' in movie #' num2str(m) ', channel ' num2str(ch)])
-        fitswrite(mov_out, [pname filesep movies{m,ch}.fname{i+1}])
-        for k = i+2:length(movies{m,ch}.fname)
+        remain = (rem(length(movies{m,ch}.frames),movies{m,ch}.N_frame_per_fits) > 0);
+        if remain
+            mov_out = zeros(movies{m,ch}.sizeX,movies{m,ch}.sizeY,...
+                rem(length(movies{m,ch}.frames),movies{m,ch}.N_frame_per_fits), 'int32');
+            frame_out = 0;
+            for n = movies{m,ch}.frames(end-size(mov_out,3)+1:end)
+                % read Frame to tmp
+                tmp = movies{m,ch}.readFrame(n);
+                frame_out = frame_out + 1;
+                % fill output
+                mov_out(:,:,frame_out) = int32(tmp);
+            end
+            mov_out = int16(mov_out - 2^15);
+            % Write output movie
+            %disp(frame_out)
+            display(['Writing compressed .fits file #' num2str(i+1) ' of ' ...
+                num2str(ceil(length(movies{m,ch}.frames)/movies{m,ch}.N_frame_per_fits)) ...
+                ' in movie #' num2str(m) ', channel ' num2str(ch)])
+            fitswrite(mov_out, [pname filesep movies{m,ch}.fname{i+1}])
+        end
+        for k = i+1+remain:length(movies{m,ch}.fname)
             display(['Deleting file: ' movies{m,ch}.fname{k}])
             delete([pname filesep movies{m,ch}.fname{k}])
         end
@@ -165,7 +172,7 @@ if convert_objects
         ch2{m}.fname = movies{m,2}.fname;
         ch2{m}.info = movies{m,2}.info;
     end
-    save([object_filename(1:end-4) '_new.mat'], 'ch1', 'ch2')
+    save('movie_objects_new.mat', 'ch1', 'ch2')
     display('New data saved.')
 end      
 display('Done')
